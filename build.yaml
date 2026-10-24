@@ -55,9 +55,9 @@ include:
     artifact-name: cornix_dongle_esb_nosd
 
   - board: cornix_ph_left//zmk
-    shield: cornix_esb_peripheral
+    shield: cornix_esb_left
     artifact-name: cornix_left_esb
 
   - board: cornix_right//zmk
-    shield: cornix_esb_peripheral
+    shield: cornix_esb_right
     artifact-name: cornix_right_esb

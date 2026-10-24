@@ -1,0 +1,5 @@
+file_format: "1"
+id: cornix_esb_left
+name: Cornix ESB Left Peripheral
+type: shield
+url: https://github.com/millijoule/zmk-cornix-ESB-GPTxs
