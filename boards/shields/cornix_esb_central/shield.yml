@@ -1,0 +1,5 @@
+file_format: "1"
+id: cornix_esb_central
+name: Cornix ESB Central
+type: shield
+url: https://github.com/millijoule/zmk-cornix-ESB-GPTxs

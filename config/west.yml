@@ -12,6 +12,10 @@ manifest:
       url-base: https://github.com/janpfischer
     - name: cormoran
       url-base: https://github.com/cormoran
+    - name: kumbung01
+      url-base: https://github.com/kumbung01
+    - name: nrfconnect
+      url-base: https://github.com/nrfconnect
   projects:
     - name: zmk
       remote: zmkfirmware
@@ -22,6 +26,22 @@ manifest:
     - name: zmk-helpers
       remote: urob
       revision: main
+      clone-depth: 1
+    - name: zmk-split-esb
+      remote: kumbung01
+      revision: main
+      clone-depth: 1
+    # ESB requires the SDK fork with the TDMA/FHSS ESB implementation.
+    - name: sdk-nrf
+      remote: kumbung01
+      revision: v3.1-branch-tdma-fhss
+      path: nrf
+      clone-depth: 1
+    - name: nrfxlib
+      remote: nrfconnect
+      revision: v3.1-branch
+      repo-path: sdk-nrfxlib
+      path: nrfxlib
       clone-depth: 1
     #- name: zmk-rgbled-widget
     #  remote: hitsmaxft

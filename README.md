@@ -80,6 +80,32 @@ include:
 Use `cornix_dongle_eyelash` only when the dongle board does not already expose
 `zephyr,display`. The `dongle_display` module supplies the display widgets.
 
+## Experimental ESB split transport
+
+An optional experimental build is available using
+[zmk-feature-split-esb](https://github.com/kumbung01/zmk-feature-split-esb).
+The module README currently documents testing on nRF52840 only. The Cornix
+configuration uses the accompanying
+[`sdk-nrf` TDMA/FHSS branch](https://github.com/kumbung01/sdk-nrf/tree/v3.1-branch-tdma-fhss)
+and `nrfxlib` `v3.1-branch`, pinned in `config/west.yml`.
+
+The firmware artifacts are:
+
+- `cornix_dongle_esb_nosd`: flash to the nice!nano USB dongle with the screen.
+- `cornix_left_esb`: flash to the left half (`cornix_ph_left` peripheral target).
+- `cornix_right_esb`: flash to the right half (`cornix_right` peripheral target).
+
+The USB dongle is the ESB central, while the two keyboard halves use ESB
+peripheral firmware with IDs 0 and 1. Bluetooth is disabled on these ESB builds.
+The standard BLE dongle build remains available separately. All three ESB
+devices must use matching values from `boards/jzf/cornix/cornix_esb.dtsi`;
+change those addresses if operating multiple separate Cornix ESB sets nearby.
+
+Treat these firmware images as experimental until the build succeeds and the
+three devices are tested together. In particular, verify split key events,
+battery reporting, display operation, USB HID output and reconnection after
+power cycling on the actual hardware.
+
 ## RGB indicators
 
 Version 3.0.0 makes the optional `cornix_indicator` shield production-ready.

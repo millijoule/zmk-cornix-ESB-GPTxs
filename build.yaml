@@ -14,7 +14,7 @@
 ---
 include:
   - board: nice_nano//zmk
-    shield: cornix_dongle_adapter cornix_dongle_eyelash dongle_display
+    shield: cornix_dongle_adapter cornix_dongle_eyelash dongle_display cornix_dongle_ble
     snippet: studio-rpc-usb-uart nrf52840-nosd
     artifact-name: cornix_dongle_nosd
   # dongle screen not yet supports zephyr4
@@ -47,3 +47,17 @@ include:
     shield: settings_reset
     snippet: studio-rpc-usb-uart nrf52840-nosd
     artifact-name: reset_nicenano_nosd
+
+  # Experimental ESB split: nice!nano USB dongle is the central; both halves are peripherals.
+  - board: nice_nano//zmk
+    shield: cornix_dongle_adapter cornix_dongle_eyelash dongle_display cornix_esb_central
+    snippet: studio-rpc-usb-uart nrf52840-nosd
+    artifact-name: cornix_dongle_esb_nosd
+
+  - board: cornix_ph_left//zmk
+    shield: cornix_esb_peripheral
+    artifact-name: cornix_left_esb
+
+  - board: cornix_right//zmk
+    shield: cornix_esb_peripheral
+    artifact-name: cornix_right_esb
