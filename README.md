@@ -97,7 +97,7 @@ The firmware artifacts are:
 
 The USB dongle is the ESB central, while the two keyboard halves use ESB
 peripheral firmware with IDs 0 and 1. Bluetooth is disabled on these ESB builds.
-The standard BLE dongle build remains available separately. All three ESB
+The standard BLE dongle build keeps the adapter's default BLE settings; the ESB central shield disables Bluetooth for the ESB target. All three ESB
 devices must use matching values from `boards/jzf/cornix/cornix_esb.dtsi`;
 change those addresses if operating multiple separate Cornix ESB sets nearby.
 
