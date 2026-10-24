@@ -38,6 +38,19 @@ manifest:
       revision: v3.1-branch-tdma-fhss
       path: nrf
       clone-depth: 1
+    # Security sources required by NCS nrf_security when Bluetooth is enabled.
+    - name: mbedtls
+      remote: nrfconnect
+      repo-path: sdk-mbedtls
+      revision: ncs-v3.1.1
+      path: modules/crypto/mbedtls
+      clone-depth: 1
+    - name: oberon-psa-crypto
+      remote: nrfconnect
+      repo-path: sdk-oberon-psa-crypto
+      revision: ncs-v3.1.1
+      path: modules/crypto/oberon-psa-crypto
+      clone-depth: 1
     - name: nrfxlib
       remote: nrfconnect
       revision: v3.1-branch
