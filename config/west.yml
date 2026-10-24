@@ -29,6 +29,7 @@ manifest:
       clone-depth: 1
     - name: zmk-split-esb
       remote: kumbung01
+      repo-path: zmk-feature-split-esb
       revision: main
       clone-depth: 1
     # ESB requires the SDK fork with the TDMA/FHSS ESB implementation.
