@@ -16,14 +16,4 @@
         events = <0>;
     };
 };
-/ {
-    esb_split {
-        compatible = "zmk,esb-split";
-        // These are arbitrary default addresses.
-        // Use different addresses for each set of devices in production.
-        base-addr-0 = <0x4B 0x9A 0x23 0xF1>;
-        base-addr-1 = <0x8C 0x14 0xE5 0x72>;
-        addr-prefix = <0x3A 0x7B 0x9F 0x2D 0x6E 0x4C 0x18 0x85>;
-    };
-};
 // vim: set ft=dts :
