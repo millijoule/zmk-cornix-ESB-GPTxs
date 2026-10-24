@@ -1,5 +1,0 @@
-file_format: "1"
-id: cornix_dongle_ble
-name: Cornix Dongle Bluetooth
-type: shield
-url: https://github.com/millijoule/zmk-cornix-ESB-GPTxs
