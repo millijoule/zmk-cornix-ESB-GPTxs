@@ -8,7 +8,7 @@ ZMK board definitions and shields for the Cornix split ergonomic keyboard.
 
 **Current board release:** [`v3.0.0`](https://github.com/hitsmaxft/zmk-keyboard-cornix/releases/tag/v3.0.0)
 
-**ZMK baseline:** `main` with Zephyr 4.1
+**ZMK baseline:** pinned commit `4dd95d7840eb3d5a3f59bb29fbf1ab054715ef85` (Zephyr 4.1 compatible)
 
 ![Cornix with dongle](images/cornix_with_dongle.png)
 
@@ -87,7 +87,8 @@ An optional experimental build is available using
 The module README currently documents testing on nRF52840 only. The Cornix
 configuration uses the accompanying
 [`sdk-nrf` TDMA/FHSS branch](https://github.com/kumbung01/sdk-nrf/tree/v3.1-branch-tdma-fhss)
-and `nrfxlib` `v3.1-branch`, pinned in `config/west.yml`.
+and `nrfxlib` 3.1 sources. The ESB module, SDK fork, and nrfxlib are pinned to
+specific commits in `config/west.yml` to keep the radio stack reproducible.
 
 The firmware artifacts are:
 
@@ -97,13 +98,23 @@ The firmware artifacts are:
 
 The USB dongle is the ESB central, while the two keyboard halves use ESB
 peripheral firmware with IDs 0 and 1. Bluetooth is disabled on these ESB builds.
-The standard BLE dongle build keeps the adapter's default BLE settings; the ESB central shield disables Bluetooth for the ESB target. All three ESB
-devices must use matching values from `boards/jzf/cornix/cornix_esb.dtsi`;
-change those addresses if operating multiple separate Cornix ESB sets nearby.
+The standard BLE dongle build keeps the adapter's default BLE settings; the ESB
+central shield disables Bluetooth for the ESB target. All three ESB devices must
+use matching values from `boards/jzf/cornix/cornix_esb.dtsi`; change those
+addresses if operating multiple separate Cornix ESB sets nearby.
+
+The ESB central now processes radio RX work on a dedicated workqueue so display
+and other system work cannot block packet draining. The BLE-only central battery
+proxy is disabled on these ESB builds: upstream ZMK sizes its battery proxy
+storage based on BLE/Wired transports, which is zero when both are disabled for
+ESB-only operation. Enabling that proxy in this configuration produced a
+zero-length-array compiler warning and can cause out-of-bounds writes. As a
+result, remote battery reporting from the two halves is temporarily disabled;
+the dongle's own battery reporting remains enabled.
 
 Treat these firmware images as experimental until the build succeeds and the
-three devices are tested together. In particular, verify split key events,
-battery reporting, display operation, USB HID output and reconnection after
+three devices are tested together. Verify key press/release ordering, latency,
+display operation, the dongle's own battery reporting, and reconnection after
 power cycling on the actual hardware.
 
 ## RGB indicators

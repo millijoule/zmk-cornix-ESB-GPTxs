@@ -17,9 +17,10 @@ manifest:
     - name: nrfconnect
       url-base: https://github.com/nrfconnect
   projects:
+    # Pin ZMK to the exact Zephyr 4.1-compatible commit used by the tested build.
     - name: zmk
       remote: zmkfirmware
-      revision: main
+      revision: 4dd95d7840eb3d5a3f59bb29fbf1ab054715ef85
       clone-depth: 1
       import:
         file: app/west.yml
@@ -27,18 +28,19 @@ manifest:
       remote: urob
       revision: main
       clone-depth: 1
+    # Pin the ESB module and its matching NCS fork: these are experimental,
+    # coupled transport/radio implementations rather than independent releases.
     - name: zmk-split-esb
       remote: kumbung01
       repo-path: zmk-feature-split-esb
-      revision: main
+      revision: f7b1bd15bfc5e96f3301f328efb2a0df16918b98
       clone-depth: 1
-    # ESB requires the SDK fork with the TDMA/FHSS ESB implementation.
     - name: sdk-nrf
       remote: kumbung01
-      revision: v3.1-branch-tdma-fhss
+      revision: 07b7e70c0d223429c58e6cffb4e6ecaa70ff949e
       path: nrf
       clone-depth: 1
-    # Security sources required by NCS nrf_security when Bluetooth is enabled.
+    # NCS 3.1.1 crypto sources required by nrf_security for BLE builds.
     - name: mbedtls
       remote: nrfconnect
       repo-path: sdk-mbedtls
@@ -53,14 +55,10 @@ manifest:
       clone-depth: 1
     - name: nrfxlib
       remote: nrfconnect
-      revision: v3.1-branch
+      revision: dfadf17305d8f000eda9aa74a5b9ff1c5647a23e
       repo-path: sdk-nrfxlib
       path: nrfxlib
       clone-depth: 1
-    #- name: zmk-rgbled-widget
-    #  remote: hitsmaxft
-    #  revision: main
-    #  clone-depth: 1
     - name: zmk-dongle-display
       remote: englmaxi
       revision: main
@@ -82,9 +80,5 @@ manifest:
       remote: cormoran
       revision: main
       clone-depth: 1
-    #- name: zmk-dongle-screen
-    #  remote: janpfischer
-    #  revision: main
-    #  clone-depth: 1
   self:
     path: config
