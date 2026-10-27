@@ -86,7 +86,7 @@ jobs:
             ${{ env.base_dir }}/nrf/
             ${{ env.base_dir }}/nrfxlib/
             ${{ env.base_dir }}/zmk-split-esb/
-          key: ${{ runner.os }}-build-${{ env.cache_name }}-${{ hashFiles('**/west.yml', '**/build-esb.yaml', 'patches/*.patch') }}
+          key: ${{ runner.os }}-build-${{ env.cache_name }}-${{ hashFiles('**/west.yml', '**/build-esb.yaml', 'scripts/*.py') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache_name }}-
 
@@ -102,13 +102,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git -C "${{ env.base_dir }}/nrf" apply --check "${GITHUB_WORKSPACE}/patches/kumbung-sdk-nrf-split-polling.patch"
-          git -C "${{ env.base_dir }}/nrf" apply "${GITHUB_WORKSPACE}/patches/kumbung-sdk-nrf-split-polling.patch"
-          # This pinned module file uses CRLF in its Git blob. Normalize before
-          # applying the LF patch so git apply behaves the same across runners.
-          sed -i 's/\r$//' "${{ env.base_dir }}/zmk-split-esb/src/split/esb/app_esb.c"
-          git -C "${{ env.base_dir }}/zmk-split-esb" apply --check "${GITHUB_WORKSPACE}/patches/zmk-split-esb-hardening.patch"
-          git -C "${{ env.base_dir }}/zmk-split-esb" apply "${GITHUB_WORKSPACE}/patches/zmk-split-esb-hardening.patch"
+          python3 "${GITHUB_WORKSPACE}/scripts/apply_esb_stack_fixes.py" \
+            "${{ env.base_dir }}/nrf/subsys/esb/esb.c" \
+            "${{ env.base_dir }}/zmk-split-esb/src/split/esb/app_esb.c"
 
       - name: Check ZMK revision
         working-directory: ${{ env.base_dir }}

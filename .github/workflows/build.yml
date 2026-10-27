@@ -8,7 +8,7 @@ on:
       - "config-esb/**"
       - "build.yaml"
       - "build-esb.yaml"
-      - "patches/**"
+      - "scripts/**"
       - ".github/workflows/build.yml"
       - ".github/workflows/build-esb.yml"
     tags-ignore:
