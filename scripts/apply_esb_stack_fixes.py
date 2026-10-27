@@ -10,8 +10,17 @@ import re
 import sys
 
 
-def replace_regex_once(path: Path, pattern: str, replacement, label: str) -> None:
+def replace_regex_once(path: Path, pattern: str, replacement, label: str, already_pattern=None) -> None:
     source = path.read_text(encoding="utf-8")
+    if already_pattern is not None:
+        already = re.compile(already_pattern, re.MULTILINE)
+        already_matches = list(already.finditer(source))
+        if len(already_matches) == 1:
+            print(f"Already applied: {label}")
+            return
+        if len(already_matches) > 1:
+            raise SystemExit(f"{path}: found {len(already_matches)} copies of the completed {label} fix.")
+
     regex = re.compile(pattern, re.MULTILINE)
     matches = list(regex.finditer(source))
     if len(matches) != 1:
@@ -95,6 +104,7 @@ def main() -> None:
             f"{m.group(1)}}}"
         ),
         "ESB initialization error propagation",
+        already_pattern=r"^[ \\t]*ret\\s*=\\s*esb_initialize\\(\\);\\n[ \\t]*if\\s*\\(\\s*ret\\s*!=\\s*0\\s*\\)\\s*\\{\\n[ \\t]*LOG_ERR\\(\\"ESB initialization failed \\(ret %d\\)\\",\\s*ret\\);\\n[ \\t]*return\\s+ret;\\n[ \\t]*\\}",
     )
     replace_regex_once(
         module_path,
@@ -106,6 +116,7 @@ def main() -> None:
             f"{m.group(1)}}}"
         ),
         "ESB transmit error propagation",
+        already_pattern=r"^[ \\t]*int\\s+ret\\s*=\\s*esb_tx_start\\(pipe,\\s*data_size\\s*\\+\\s*2\\);\\n[ \\t]*if\\s*\\(\\s*ret\\s*<\\s*0\\s*\\)\\s*\\{\\n[ \\t]*return\\s+ret;\\n[ \\t]*\\}",
     )
     replace_regex_once(
         module_path,
@@ -116,6 +127,7 @@ def main() -> None:
             f"{m.group(2)}}}"
         ),
         "defined return from direct-RX handler",
+        already_pattern=r"^[ \\t]*esb_ctx->rx_handler\\(source,\\s*payload\\.data,\\s*payload\\.length\\);[ \\t]*\\n[ \\t]*return\\s+0;[ \\t]*\\n[ \\t]*\\}",
     )
 
 
