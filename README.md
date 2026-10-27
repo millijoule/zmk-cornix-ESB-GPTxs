@@ -72,13 +72,13 @@ pipe 7 for peripheral-to-central traffic. A small local patch instead sets the
 number of scheduled slots from `CONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS`
 (2). The custom ESB workflow applies this patch only to the pinned SDK checkout.
 
-The ESB targets use the 2 kHz polling option and whole-key-state snapshots.
-The snapshots let the central reconstruct key transitions from the peripheral's
-complete position state, which is intended to reduce stuck keys if an event is
-lost. The radio stack is still experimental: these settings should be verified
-on the actual keyboard for latency, press/release behavior, key ordering, and
-reconnection rather than treated as a guarantee of a particular end-to-end
-latency.
+The ESB targets use 2 kHz polling and individual key-position events,
+rather than full matrix snapshots. This avoids reconstructing several changes
+in position order when multiple keys change between snapshots and reduces each
+key event's payload. The radio stack is still experimental: verify latency,
+press/release behavior, simultaneous typing across both halves, and reconnection
+on the actual keyboard; this configuration is not a guarantee of a particular
+end-to-end latency.
 
 All ESB targets enable `CONFIG_ZMK_BATTERY_REPORTING` so the peripheral
 battery symbol required by the ESB module is linked. The ESB central disables
