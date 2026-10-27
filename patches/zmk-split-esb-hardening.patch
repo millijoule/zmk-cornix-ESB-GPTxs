@@ -1,7 +1,7 @@
 diff --git a/src/split/esb/app_esb.c b/src/split/esb/app_esb.c
 --- a/src/split/esb/app_esb.c
 +++ b/src/split/esb/app_esb.c
-@@ -192,4 +192,8 @@ int zmk_split_esb_init(void) {
+@@ -204,4 +204,8 @@ int zmk_split_esb_init(void) {
 -    esb_initialize();
 +    ret = esb_initialize();
 +    if (ret != 0) {
@@ -11,7 +11,7 @@ diff --git a/src/split/esb/app_esb.c b/src/split/esb/app_esb.c
  
  #if CONFIG_ZMK_SPLIT_ESB_USE_WORK_QUEUE_DEDICATED
      init_workqueue(&rx_workqueue);
-@@ -270,5 +270,6 @@ int send_data_rb(uint8_t pipe, uint8_t type, void *data) {
+@@ -253,5 +257,6 @@ int send_data_rb(uint8_t pipe, uint8_t type, void *data) {
 -    if (esb_tx_start(pipe, data_size + 2) == -ENOMEM) {
 -        return -ENOMEM;
 +    int ret = esb_tx_start(pipe, data_size + 2);
@@ -20,7 +20,7 @@ diff --git a/src/split/esb/app_esb.c b/src/split/esb/app_esb.c
      }
  
      uint8_t header = HEADER;
-@@ -370,5 +370,6 @@ static int handle_data_dr(void) {
+@@ -310,5 +315,6 @@ static int handle_data_dr(void) {
  
      LOG_HEXDUMP_DBG(payload.data, payload.length, "rx ");
  
