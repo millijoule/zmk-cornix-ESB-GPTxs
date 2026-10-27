@@ -1,23 +1,33 @@
 #!/usr/bin/env python3
 """Apply checked, minimal edits to the pinned experimental ESB radio stack.
 
-Each transformation requires its exact upstream fragment to occur exactly
-once. If the checkout changes unexpectedly, abort rather than silently applying
-a partial or potentially incorrect fix.
+Each transformation uses a whitespace-tolerant expression and requires exactly
+one match. If the checkout changes unexpectedly, abort rather than silently
+applying a partial or potentially incorrect fix.
 """
 from pathlib import Path
+import re
 import sys
 
 
-def replace_once(path: Path, before: str, after: str, label: str) -> None:
+def replace_regex_once(path: Path, pattern: str, replacement, label: str) -> None:
     source = path.read_text(encoding="utf-8")
-    count = source.count(before)
-    if count != 1:
+    regex = re.compile(pattern, re.MULTILINE)
+    matches = list(regex.finditer(source))
+    if len(matches) != 1:
+        details = ""
+        if path.name == "esb.c":
+            candidates = [
+                line.strip() for line in source.splitlines()
+                if "ctx.pipes" in line or "ESB_PIPE_COUNT" in line
+            ]
+            details = f" Candidate lines: {candidates[:8]!r}"
         raise SystemExit(
-            f"{path}: expected exactly one {label} source fragment; found {count}. "
+            f"{path}: expected exactly one {label} source fragment; "
+            f"found {len(matches)}.{details} "
             "Check the pinned SDK/module revision before changing this script."
         )
-    updated = source.replace(before, after, 1)
+    updated = regex.sub(replacement, source, count=1)
     with path.open("w", encoding="utf-8", newline="\n") as handle:
         handle.write(updated)
     print(f"Applied: {label}")
@@ -33,39 +43,46 @@ def main() -> None:
     sdk_path = Path(sys.argv[1])
     module_path = Path(sys.argv[2])
 
-    replace_once(
+    replace_regex_once(
         sdk_path,
-        "\tctx.pipes = ESB_PIPE_COUNT;",
-        "\t/* Keep physical pipe 7 for uplink traffic; schedule only active halves. */\n"
-        "\tctx.pipes = CONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS;",
+        r"^([ \t]*)ctx\.pipes[ \t]*=[ \t]*ESB_PIPE_COUNT;[ \t]*$",
+        lambda m: (
+            f"{m.group(1)}/* Keep physical pipe 7 for uplink traffic; schedule only active halves. */\n"
+            f"{m.group(1)}ctx.pipes = CONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS;"
+        ),
         "two-peripheral TDMA slot scheduling",
     )
-    replace_once(
+    replace_regex_once(
         module_path,
-        "    esb_initialize();",
-        "    ret = esb_initialize();\n"
-        "    if (ret != 0) {\n"
-        '        LOG_ERR("ESB initialization failed (ret %d)", ret);\n'
-        "        return ret;\n"
-        "    }",
+        r"^([ \t]*)esb_initialize\(\);[ \t]*$",
+        lambda m: (
+            f"{m.group(1)}ret = esb_initialize();\n"
+            f"{m.group(1)}if (ret != 0) {{\n"
+            f'{m.group(1)}    LOG_ERR("ESB initialization failed (ret %d)", ret);\n'
+            f"{m.group(1)}    return ret;\n"
+            f"{m.group(1)}}}"
+        ),
         "ESB initialization error propagation",
     )
-    replace_once(
+    replace_regex_once(
         module_path,
-        "    if (esb_tx_start(pipe, data_size + 2) == -ENOMEM) {\n"
-        "        return -ENOMEM;\n"
-        "    }",
-        "    int ret = esb_tx_start(pipe, data_size + 2);\n"
-        "    if (ret < 0) {\n"
-        "        return ret;\n"
-        "    }",
+        r"^([ \t]*)if\s*\(\s*esb_tx_start\(pipe,\s*data_size\s*\+\s*2\)\s*==\s*-ENOMEM\s*\)\s*\{\n[ \t]*return\s+-ENOMEM;\n[ \t]*\}",
+        lambda m: (
+            f"{m.group(1)}int ret = esb_tx_start(pipe, data_size + 2);\n"
+            f"{m.group(1)}if (ret < 0) {{\n"
+            f"{m.group(1)}    return ret;\n"
+            f"{m.group(1)}}}"
+        ),
         "ESB transmit error propagation",
     )
-    replace_once(
+    replace_regex_once(
         module_path,
-        "    esb_ctx->rx_handler(source, payload.data, payload.length);\n}",
-        "    esb_ctx->rx_handler(source, payload.data, payload.length);\n"
-        "    return 0;\n}",
+        r"^([ \t]*)esb_ctx->rx_handler\(source,\s*payload\.data,\s*payload\.length\);[ \t]*\n([ \t]*)\}",
+        lambda m: (
+            f"{m.group(1)}esb_ctx->rx_handler(source, payload.data, payload.length);\n"
+            f"{m.group(1)}return 0;\n"
+            f"{m.group(2)}}}"
+        ),
         "defined return from direct-RX handler",
     )
 
