@@ -20,7 +20,7 @@ jobs:
           matrix_content=$(yq -oj -I0 'build-esb.yaml')
 
           if [ -z "$matrix_content" ] || [ "$matrix_content" = "null" ]; then
-            echo "$::notice file=build-esb.yaml,title=Empty ESB build matrix::No ESB targets configured."
+            echo "::notice file=build-esb.yaml,title=Empty ESB build matrix::No ESB targets configured."
             echo "has_valid_build_matrix=false" >> $GITHUB_OUTPUT
           else
             echo "build_matrix=$matrix_content" >> $GITHUB_ENV
@@ -68,9 +68,9 @@ jobs:
           fi
 
           echo "extra_west_args=${extra_west_args}" >> $GITHUB_ENV
-          echo "extra_cmake_args=${shield:+-DSHIELD=\\\"$shield\\\"}${zmk_load_arg}" >> $GITHUB_ENV
+          echo "extra_cmake_args=${shield:+-DSHIELD=\"$shield\"}${zmk_load_arg}" >> $GITHUB_ENV
           echo "display_name=${shield:+$shield - }${board}" >> $GITHUB_ENV
-          echo "artifact_name=${artifact_name:-${shield:+$shield-}${board//\\//_}-zmk}" >> $GITHUB_ENV
+          echo "artifact_name=${artifact_name:-${shield:+$shield-}${board//\//_}-zmk}" >> $GITHUB_ENV
 
       - name: Copy config files to isolated temporary directory
         run: |
@@ -97,7 +97,6 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache_name }}-${{ hashFiles('**/west.yml', '**/build-esb.yaml', 'patches/*.patch') }}
           restore-keys: |
             ${{ runner.os }}-build-${{ env.cache_name }}-
-            ${{ runner.os }}-build-
 
       - name: West Init
         working-directory: ${{ env.base_dir }}
@@ -148,9 +147,9 @@ jobs:
             west boards --board-root ${{ env.base_dir }}/zmk/app/module --board-root ${{ env.base_dir }}/zmk/app --board "$original_board" --format "{qualifiers}" | grep "zmk" > /dev/null
             if [ $? -ne 0 ]
             then
-              echo "$::warning file=build/zephyr/.config,title=Missing ZMK Compat::The selected board does not report explicit ZMK compat."
+              echo "::warning file=build/zephyr/.config,title=Missing ZMK Compat::The selected board does not report explicit ZMK compat."
             else
-              echo "$::error file=build/zephyr/.config,title=Missing ZMK Compat::The selected board is not set up for ZMK and a ZMK variant is available."
+              echo "::error file=build/zephyr/.config,title=Missing ZMK Compat::The selected board is not set up for ZMK and a ZMK variant is available."
               exit 1
             fi
           fi
@@ -208,3 +207,4 @@ jobs:
           name: cornix-esb-firmware
           pattern: artifact-*
           delete-merged: true
+
