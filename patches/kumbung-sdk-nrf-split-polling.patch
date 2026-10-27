@@ -1,7 +1,7 @@
 diff --git a/subsys/esb/esb.c b/subsys/esb/esb.c
 --- a/subsys/esb/esb.c
 +++ b/subsys/esb/esb.c
-@@ -777,9 +777,11 @@ static void central_setup(void)
+@@ -778,7 +778,9 @@ static void central_setup(void)
  {
  	nrf_timer_int_enable(esb_timer.p_reg, NRF_TIMER_INT_COMPARE1_MASK);
  	nrf_radio_int_enable(NRF_RADIO, NRF_RADIO_INT_CRCOK_MASK);
