@@ -88,8 +88,6 @@ jobs:
             ${{ env.base_dir }}/zmk-split-esb/
           key: ${{ runner.os }}-build-${{ env.cache_name }}-${{ hashFiles('**/west.yml', '**/build-esb.yaml', 'scripts/*.py') }}
           # Do not restore a prefix-matched cache: it may contain locally patched sources from older jobs.
-          restore-keys: |
-            ${{ runner.os }}-build-${{ env.cache_name }}-
 
       - name: West Init
         working-directory: ${{ env.base_dir }}

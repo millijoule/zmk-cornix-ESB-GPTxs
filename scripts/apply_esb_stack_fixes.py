@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Apply checked, minimal edits to the pinned experimental ESB radio stack.
 
-Each transformation uses a whitespace-tolerant expression and requires exactly
-one match. If the checkout changes unexpectedly, abort rather than silently
-applying a partial or potentially incorrect fix.
+The edits are idempotent because a CI cache can contain previously transformed
+sources. Each edit either recognises the completed change or requires exactly
+one original source fragment.
 """
 from pathlib import Path
 import re
@@ -24,16 +24,8 @@ def replace_regex_once(path: Path, pattern: str, replacement, label: str, alread
     regex = re.compile(pattern, re.MULTILINE)
     matches = list(regex.finditer(source))
     if len(matches) != 1:
-        details = ""
-        if path.name == "esb.c":
-            candidates = [
-                line.strip() for line in source.splitlines()
-                if "ctx.pipes" in line or "ESB_PIPE_COUNT" in line
-            ]
-            details = f" Candidate lines: {candidates[:8]!r}"
         raise SystemExit(
-            f"{path}: expected exactly one {label} source fragment; "
-            f"found {len(matches)}.{details} "
+            f"{path}: expected exactly one {label} source fragment; found {len(matches)}. "
             "Check the pinned SDK/module revision before changing this script."
         )
     updated = regex.sub(replacement, source, count=1)
@@ -90,8 +82,6 @@ def main() -> None:
     sdk_path = Path(sys.argv[1])
     module_path = Path(sys.argv[2])
 
-    # Match the assignment inside central_setup() irrespective of the SDK's
-    # spacing or the original right-hand-side expression.
     replace_scoped_central_pipe_count(sdk_path)
     replace_regex_once(
         module_path,
@@ -104,7 +94,7 @@ def main() -> None:
             f"{m.group(1)}}}"
         ),
         "ESB initialization error propagation",
-        already_pattern=r"^[ \\t]*ret\\s*=\\s*esb_initialize\\(\\);\\n[ \\t]*if\\s*\\(\\s*ret\\s*!=\\s*0\\s*\\)\\s*\\{\\n[ \\t]*LOG_ERR\\(\\"ESB initialization failed \\(ret %d\\)\\",\\s*ret\\);\\n[ \\t]*return\\s+ret;\\n[ \\t]*\\}",
+        already_pattern=r"^[ \t]*ret\s*=\s*esb_initialize\(\);\n[ \t]*if\s*\(\s*ret\s*!=\s*0\s*\)\s*\{\n[ \t]*LOG_ERR\(\"ESB initialization failed \(ret %d\)\",\s*ret\);\n[ \t]*return\s+ret;\n[ \t]*\}",
     )
     replace_regex_once(
         module_path,
@@ -116,7 +106,7 @@ def main() -> None:
             f"{m.group(1)}}}"
         ),
         "ESB transmit error propagation",
-        already_pattern=r"^[ \\t]*int\\s+ret\\s*=\\s*esb_tx_start\\(pipe,\\s*data_size\\s*\\+\\s*2\\);\\n[ \\t]*if\\s*\\(\\s*ret\\s*<\\s*0\\s*\\)\\s*\\{\\n[ \\t]*return\\s+ret;\\n[ \\t]*\\}",
+        already_pattern=r"^[ \t]*int\s+ret\s*=\s*esb_tx_start\(pipe,\s*data_size\s*\+\s*2\);\n[ \t]*if\s*\(\s*ret\s*<\s*0\s*\)\s*\{\n[ \t]*return\s+ret;\n[ \t]*\}",
     )
     replace_regex_once(
         module_path,
@@ -127,7 +117,7 @@ def main() -> None:
             f"{m.group(2)}}}"
         ),
         "defined return from direct-RX handler",
-        already_pattern=r"^[ \\t]*esb_ctx->rx_handler\\(source,\\s*payload\\.data,\\s*payload\\.length\\);[ \\t]*\\n[ \\t]*return\\s+0;[ \\t]*\\n[ \\t]*\\}",
+        already_pattern=r"^[ \t]*esb_ctx->rx_handler\(source,\s*payload\.data,\s*payload\.length\);[ \t]*\n[ \t]*return\s+0;[ \t]*\n[ \t]*\}",
     )
 
 
