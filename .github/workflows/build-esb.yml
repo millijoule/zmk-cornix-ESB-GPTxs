@@ -1,4 +1,4 @@
-name: Build experimental ESB firmware
+name: Build ESB-only firmware
 
 on:
   workflow_call:
@@ -67,8 +67,8 @@ jobs:
       - name: Copy config files to isolated temporary directory
         run: |
           if [ "${{ env.base_dir }}" != "${GITHUB_WORKSPACE}" ]; then
-            mkdir -p "${{ env.base_dir }}/config-esb"
-            cp -R config-esb/* "${{ env.base_dir }}/config-esb/"
+            mkdir -p "${{ env.base_dir }}/config"
+            cp -R config/* "${{ env.base_dir }}/config/"
           fi
 
       - name: Cache west modules
@@ -91,7 +91,7 @@ jobs:
 
       - name: West Init
         working-directory: ${{ env.base_dir }}
-        run: west init -l "${{ env.base_dir }}/config-esb"
+        run: west init -l "${{ env.base_dir }}/config"
 
       - name: West Update
         working-directory: ${{ env.base_dir }}
@@ -125,7 +125,7 @@ jobs:
           SNIPPET: ${{ matrix.snippet }}
           MATRIX_CMAKE_ARGS: ${{ matrix.cmake-args }}
           BUILD_DIR: ${{ env.build_dir }}
-          ZMK_CONFIG_PATH: ${{ env.base_dir }}/config-esb
+          ZMK_CONFIG_PATH: ${{ env.base_dir }}/config
         run: |
           set -euo pipefail
           west_args=()
@@ -146,7 +146,7 @@ jobs:
 
       - name: Check if building a board without explicit ZMK compat
         if: always()
-        working-directory: ${{ env.base_dir }}/config-esb
+        working-directory: ${{ env.base_dir }}/config
         run: |
           if ! (grep "CONFIG_ZMK_BOARD_COMPAT=y" "${{ env.build_dir }}/zephyr/.config" > /dev/null)
           then

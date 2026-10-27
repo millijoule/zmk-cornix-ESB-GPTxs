@@ -17,19 +17,19 @@ ZMK board definitions and shields for the Cornix split ergonomic keyboard.
 - `cornix_left//zmk` — left half for a standard split build
 - `cornix_right//zmk` — right peripheral half
 - `cornix_ph_left//zmk` — left peripheral half for a dongle build
-- `cornix_dongle_adapter` — central dongle matrix and Bluetooth role
+- `cornix_dongle_adapter` — USB dongle interface for the ESB central
 - `cornix_dongle_eyelash` — optional display hardware overlay
 - `cornix_indicator` — production-ready RGB battery and connection indicators
 
 Cornix uses a compact 3×6 column-staggered layout with three thumb keys per
-half. The hardware supports USB-C, Bluetooth, Kailh Choc V2 hot-swap sockets,
-and 10°, 18°, or 25° tenting.
+half. The hardware supports USB-C, Bluetooth-capable controllers, Kailh Choc V2
+hot-swap sockets, and 10°, 18°, or 25° tenting. This branch's firmware uses ESB only.
 
 ## Zephyr 4.1 requirements
 
 Always use qualified ZMK board names such as `nice_nano//zmk`. The unqualified
-`nice_nano` target may select `CONFIG_SETTINGS_NONE=y`, discard the Bluetooth
-identity after reboot, and break existing split bonds.
+`nice_nano` target may select `CONFIG_SETTINGS_NONE=y`, disabling persistent
+settings. Use `nice_nano//zmk` for the dongle and reset builds.
 
 For every nice!nano dongle or reset build, verify the final `.config` contains:
 
@@ -42,55 +42,14 @@ It must not contain `CONFIG_SETTINGS_NONE=y`.
 
 ## Build targets
 
-The standard firmware matrix uses `config/west.yml` and `build.yaml`. It does
-not load the experimental NCS/ESB SDK fork, so the BLE security libraries are
-not built through the incompatible NCS 3.1/Zephyr 4.1 combination.
+This branch intentionally builds **ESB-only firmware**. The GitHub Actions workflow builds the three targets in `build-esb.yaml`; the standard BLE build matrix is disabled. BLE-specific profile actions have been removed from the keymaps, and Bluetooth is disabled in the dongle and split firmware.
 
-## Standard split
+## ESB split transport
 
-```yaml
-include:
-  - board: cornix_left//zmk
-    artifact-name: cornix_left
-
-  - board: cornix_right//zmk
-    artifact-name: cornix_right
-
-  - board: cornix_right//zmk
-    shield: settings_reset
-    artifact-name: cornix_reset
-```
-
-## Dongle integration
-
-```yaml
-include:
-  - board: nice_nano//zmk
-    shield: cornix_dongle_adapter cornix_dongle_eyelash dongle_display
-    snippet: studio-rpc-usb-uart
-    artifact-name: cornix_dongle
-
-  - board: cornix_ph_left//zmk
-    artifact-name: cornix_left_for_dongle
-
-  - board: cornix_right//zmk
-    artifact-name: cornix_right
-
-  - board: nice_nano//zmk
-    shield: settings_reset
-    artifact-name: dongle_reset
-```
-
-Use `cornix_dongle_eyelash` only when the dongle board does not already expose
-`zephyr,display`. The `dongle_display` module supplies the display widgets.
-
-## Experimental ESB split transport
-
-The experimental ESB firmware has a separate manifest, `config-esb/west.yml`,
-and build matrix, `build-esb.yaml`. This is intentional: the TDMA/FHSS radio
-stack uses a custom NCS fork whose BLE security configuration does not compile
-reliably with Zephyr 4.1. The standard BLE builds no longer inherit that fork.
-The ESB module and its SDK dependencies are pinned to exact commits.
+This branch uses `config/west.yml` to pin the ZMK baseline, ESB module, and
+coupled NCS/nrfxlib dependencies to exact revisions. The workflow uses only
+`build-esb.yaml`. Bluetooth is disabled, so the unsupported BLE-security
+combination in the experimental SDK fork is not part of these firmware builds.
 
 The module README documents testing on nRF52840 only. The target firmware
 artifacts are:
@@ -146,11 +105,10 @@ release artifacts.
 
 ## Flashing and recovery
 
-1. Flash the matching settings-reset UF2 to every role whose bonds must be
-   cleared.
-2. Flash the left, right, and optional dongle UF2 files to their matching
-   devices.
-3. Reset both halves together and then reconnect the host.
+1. Flash the matching ESB UF2 files to the dongle and both keyboard
+   halves. Do not mix standard BLE images with ESB images.
+2. Power-cycle or reset both halves and the dongle, then connect the dongle to
+   the host. Bluetooth bond clearing is not required by this ESB-only build.
 
 Cornix has used the no-SoftDevice flash layout since v2.3. For older firmware,
 stock RMK interoperability, or a board that no longer enters UF2 mode, follow

@@ -1,35 +1,4 @@
-# Standard Cornix BLE / wired build matrix.
-# Experimental ESB targets use build-esb.yaml and config-esb/west.yml.
+# BLE build matrix intentionally disabled. This repository now builds ESB-only firmware.
+# The active build matrix is build-esb.yaml.
 ---
-include:
-  - board: nice_nano//zmk
-    shield: cornix_dongle_adapter cornix_dongle_eyelash dongle_display
-    snippet: studio-rpc-usb-uart nrf52840-nosd
-    artifact-name: cornix_dongle_nosd
-  # dongle screen not yet supports zephyr4
-  # - board: seeeduino_xiao_ble
-  #   shield: cornix_dongle_adapter dongle_screen
-  #   snippet: studio-rpc-usb-uart
-  #   artifact-name: cornix_dongle_zds_see
-  # - board: nice_nano
-  #   shield: cornix_dongle_adapter dongle_screen
-  #   snippet: studio-rpc-usb-uart
-  #   artifact-name: cornix_dongle_zds_nano
-  - board: cornix_left//zmk
-    artifact-name: cornix_left_default_nosd
-
-  - board: cornix_ph_left//zmk
-    artifact-name: cornix_left_for_dongle_nosd
-
-  - board: cornix_right//zmk
-    artifact-name: cornix_right_nosd
-
-  - board: cornix_right//zmk
-    shield: settings_reset
-    snippet: studio-rpc-usb-uart nrf52840-nosd
-    artifact-name: cornix_reset
-
-  - board: nice_nano//zmk
-    shield: settings_reset
-    snippet: studio-rpc-usb-uart nrf52840-nosd
-    artifact-name: reset_nicenano_nosd
+include: []
