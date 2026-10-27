@@ -55,7 +55,6 @@ jobs:
           snippet: ${{ matrix.snippet }}
         run: |
           if [ -e zephyr/module.yml ]; then
-            export zmk_load_arg=" -DZMK_EXTRA_MODULES='${GITHUB_WORKSPACE}'"
             new_tmp_dir="${TMPDIR:-/tmp}/zmk-config"
             mkdir -p "${new_tmp_dir}"
             echo "base_dir=${new_tmp_dir}" >> $GITHUB_ENV
@@ -63,15 +62,8 @@ jobs:
             echo "base_dir=${GITHUB_WORKSPACE}" >> $GITHUB_ENV
           fi
 
-          if [ -n "${snippet}" ]; then
-            extra_west_args="-S \"${snippet}\""
-          fi
-
-          echo "extra_west_args=${extra_west_args}" >> $GITHUB_ENV
-          echo "extra_cmake_args=${shield:+-DSHIELD=\"$shield\"}${zmk_load_arg}" >> $GITHUB_ENV
           echo "display_name=${shield:+$shield - }${board}" >> $GITHUB_ENV
-          echo "artifact_name=${artifact_name:-${shield:+$shield-}${board//\//_}-zmk}" >> $GITHUB_ENV
-
+          echo "artifact_name=${artifact_name:-${shield:+$shield-}${board//\\//_}-zmk}" >> $GITHUB_ENV
       - name: Copy config files to isolated temporary directory
         run: |
           if [ "${{ env.base_dir }}" != "${GITHUB_WORKSPACE}" ]; then
@@ -131,8 +123,31 @@ jobs:
 
       - name: West Build (${{ env.display_name }})
         working-directory: ${{ env.base_dir }}
-        shell: sh -x {0}
-        run: west build -s zmk/app -d "${{ env.build_dir }}" -b "${{ matrix.board }}" ${{ env.extra_west_args }} -- -DZMK_CONFIG=${{ env.base_dir }}/config-esb ${{ env.extra_cmake_args }} ${{ matrix.cmake-args }}
+        shell: bash -x {0}
+        env:
+          BOARD: ${{ matrix.board }}
+          SHIELD: ${{ matrix.shield }}
+          SNIPPET: ${{ matrix.snippet }}
+          MATRIX_CMAKE_ARGS: ${{ matrix.cmake-args }}
+          BUILD_DIR: ${{ env.build_dir }}
+          ZMK_CONFIG_PATH: ${{ env.base_dir }}/config-esb
+        run: |
+          set -euo pipefail
+          west_args=()
+          if [[ -n "${SNIPPET:-}" ]]; then
+            west_args+=(-S "${SNIPPET}")
+          fi
+
+          cmake_args=("-DZMK_CONFIG=${ZMK_CONFIG_PATH}" "-DZMK_EXTRA_MODULES=${GITHUB_WORKSPACE}")
+          if [[ -n "${SHIELD:-}" ]]; then
+            cmake_args+=("-DSHIELD=${SHIELD}")
+          fi
+          if [[ -n "${MATRIX_CMAKE_ARGS:-}" ]]; then
+            read -r -a extra_cmake_args <<< "${MATRIX_CMAKE_ARGS}"
+            cmake_args+=("${extra_cmake_args[@]}")
+          fi
+
+          west build -s zmk/app -d "${BUILD_DIR}" -b "${BOARD}" "${west_args[@]}" -- "${cmake_args[@]}"
 
       - name: Check if building a board without explicit ZMK compat
         if: always()
