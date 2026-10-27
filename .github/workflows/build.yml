@@ -5,18 +5,34 @@ on:
     paths:
       - "boards/**"
       - "config/**"
+      - "config-esb/**"
       - "build.yaml"
+      - "build-esb.yaml"
+      - "patches/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/build-esb.yml"
     tags-ignore:
       - "*"
   pull_request:
     paths:
       - "boards/**"
       - "config/**"
+      - "config-esb/**"
       - "build.yaml"
+      - "build-esb.yaml"
+      - "patches/**"
       - ".github/workflows/build.yml"
+      - ".github/workflows/build-esb.yml"
 
 jobs:
-  build:
-    # Keep the build workflow implementation aligned with the pinned ZMK source.
+  build-standard:
+    name: Build standard BLE firmware
     uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@4dd95d7840eb3d5a3f59bb29fbf1ab054715ef85
+    with:
+      build_matrix_path: build.yaml
+      config_path: config
+      archive_name: cornix-ble-firmware
+
+  build-esb:
+    name: Build experimental ESB firmware
+    uses: ./.github/workflows/build-esb.yml

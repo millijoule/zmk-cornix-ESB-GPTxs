@@ -42,7 +42,11 @@ It must not contain `CONFIG_SETTINGS_NONE=y`.
 
 ## Build targets
 
-Standard split:
+The standard firmware matrix uses `config/west.yml` and `build.yaml`. It does
+not load the experimental NCS/ESB SDK fork, so the BLE security libraries are
+not built through the incompatible NCS 3.1/Zephyr 4.1 combination.
+
+## Standard split
 
 ```yaml
 include:
@@ -57,7 +61,7 @@ include:
     artifact-name: cornix_reset
 ```
 
-Dongle integration:
+## Dongle integration
 
 ```yaml
 include:
@@ -82,40 +86,52 @@ Use `cornix_dongle_eyelash` only when the dongle board does not already expose
 
 ## Experimental ESB split transport
 
-An optional experimental build is available using
-[zmk-feature-split-esb](https://github.com/kumbung01/zmk-feature-split-esb).
-The module README currently documents testing on nRF52840 only. The Cornix
-configuration uses the accompanying
-[`sdk-nrf` TDMA/FHSS branch](https://github.com/kumbung01/sdk-nrf/tree/v3.1-branch-tdma-fhss)
-and `nrfxlib` 3.1 sources. The ESB module, SDK fork, and nrfxlib are pinned to
-specific commits in `config/west.yml` to keep the radio stack reproducible.
+The experimental ESB firmware has a separate manifest, `config-esb/west.yml`,
+and build matrix, `build-esb.yaml`. This is intentional: the TDMA/FHSS radio
+stack uses a custom NCS fork whose BLE security configuration does not compile
+reliably with Zephyr 4.1. The standard BLE builds no longer inherit that fork.
+The ESB module and its SDK dependencies are pinned to exact commits.
 
-The firmware artifacts are:
+The module README documents testing on nRF52840 only. The target firmware
+artifacts are:
 
 - `cornix_dongle_esb_nosd`: flash to the nice!nano USB dongle with the screen.
 - `cornix_left_esb`: flash to the left half (`cornix_ph_left` peripheral target).
 - `cornix_right_esb`: flash to the right half (`cornix_right` peripheral target).
 
-The USB dongle is the ESB central, while the two keyboard halves use ESB
-peripheral firmware with IDs 0 and 1. Bluetooth is disabled on these ESB builds.
-The standard BLE dongle build keeps the adapter's default BLE settings; the ESB
-central shield disables Bluetooth for the ESB target. All three ESB devices must
-use matching values from `boards/jzf/cornix/cornix_esb.dtsi`; change those
-addresses if operating multiple separate Cornix ESB sets nearby.
+The USB dongle is the ESB central, while the two halves use ESB peripheral
+firmware with IDs 0 and 1. Bluetooth is disabled in all three ESB images. Keep
+the addresses in `boards/jzf/cornix/cornix_esb.dtsi` identical across all three
+devices; change them if operating multiple Cornix ESB sets nearby.
 
-The ESB central now processes radio RX work on a dedicated workqueue so display
-and other system work cannot block packet draining. The BLE-only central battery
-proxy is disabled on these ESB builds: upstream ZMK sizes its battery proxy
-storage based on BLE/Wired transports, which is zero when both are disabled for
-ESB-only operation. Enabling that proxy in this configuration produced a
-zero-length-array compiler warning and can cause out-of-bounds writes. As a
-result, remote battery reporting from the two halves is temporarily disabled;
-the dongle's own battery reporting remains enabled.
+### ESB radio timing and event reliability
 
-Treat these firmware images as experimental until the build succeeds and the
-three devices are tested together. Verify key press/release ordering, latency,
-display operation, the dongle's own battery reporting, and reconnection after
-power cycling on the actual hardware.
+The upstream SDK fork hardcoded the TDMA round-robin slot count to
+`CONFIG_ESB_PIPE_COUNT` (8), even when this keyboard has only two active
+peripherals. The physical pipe count must remain 8 because the protocol uses
+pipe 7 for peripheral-to-central traffic. A small local patch instead sets the
+number of scheduled slots from `CONFIG_ZMK_SPLIT_BLE_CENTRAL_PERIPHERALS`
+(2). The custom ESB workflow applies this patch only to the pinned SDK checkout.
+
+The ESB targets use the 2 kHz polling option and whole-key-state snapshots.
+The snapshots let the central reconstruct key transitions from the peripheral's
+complete position state, which is intended to reduce stuck keys if an event is
+lost. The radio stack is still experimental: these settings should be verified
+on the actual keyboard for latency, press/release behavior, key ordering, and
+reconnection rather than treated as a guarantee of a particular end-to-end
+latency.
+
+All ESB targets enable `CONFIG_ZMK_BATTERY_REPORTING` so the peripheral
+battery symbol required by the ESB module is linked. The ESB central disables
+only the BLE-specific battery polling/proxy options, whose storage logic assumes
+BLE/Wired split transports. The peripheral's battery event code is not disabled
+by this setting.
+
+The ESB build workflow also applies small defensive fixes to the pinned module:
+it stops initialization when `esb_initialize()` fails, propagates all errors
+from `esb_tx_start()` (rather than checking only `-ENOMEM`), and returns a
+defined result from the non-ring-buffer RX path. These patches are checked
+against the pinned sources before each build.
 
 ## RGB indicators
 

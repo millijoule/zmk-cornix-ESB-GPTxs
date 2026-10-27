@@ -1,16 +1,5 @@
-# This file generates the GitHub Actions matrix
-# For simple board + shield combinations, add them
-# to the top level board and shield arrays, for more
-# control, add individual board + shield combinations to
-# the `include` property, e.g:
-#
-# board: [ "nice_nano_v2" ]
-# shield: [ "corne_left", "corne_right" ]
-# include:
-#   - board: bdn9_rev2
-#   - board: nice_nano_v2
-#     shield: reviung41
-#
+# Standard Cornix BLE / wired build matrix.
+# Experimental ESB targets use build-esb.yaml and config-esb/west.yml.
 ---
 include:
   - board: nice_nano//zmk
@@ -27,15 +16,12 @@ include:
   #   snippet: studio-rpc-usb-uart
   #   artifact-name: cornix_dongle_zds_nano
   - board: cornix_left//zmk
-    # shield: cornix_indicator
     artifact-name: cornix_left_default_nosd
 
   - board: cornix_ph_left//zmk
-    # shield: cornix_indicator
     artifact-name: cornix_left_for_dongle_nosd
 
   - board: cornix_right//zmk
-    # shield: cornix_indicator
     artifact-name: cornix_right_nosd
 
   - board: cornix_right//zmk
@@ -47,17 +33,3 @@ include:
     shield: settings_reset
     snippet: studio-rpc-usb-uart nrf52840-nosd
     artifact-name: reset_nicenano_nosd
-
-  # Experimental ESB split: nice!nano USB dongle is the central; both halves are peripherals.
-  - board: nice_nano//zmk
-    shield: cornix_dongle_adapter cornix_dongle_eyelash dongle_display cornix_esb_central
-    snippet: studio-rpc-usb-uart nrf52840-nosd
-    artifact-name: cornix_dongle_esb_nosd
-
-  - board: cornix_ph_left//zmk
-    shield: cornix_esb_left
-    artifact-name: cornix_left_esb
-
-  - board: cornix_right//zmk
-    shield: cornix_esb_right
-    artifact-name: cornix_right_esb
