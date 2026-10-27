@@ -112,6 +112,9 @@ jobs:
           set -euo pipefail
           git -C "${{ env.base_dir }}/nrf" apply --check "${GITHUB_WORKSPACE}/patches/kumbung-sdk-nrf-split-polling.patch"
           git -C "${{ env.base_dir }}/nrf" apply "${GITHUB_WORKSPACE}/patches/kumbung-sdk-nrf-split-polling.patch"
+          # This pinned module file uses CRLF in its Git blob. Normalize before
+          # applying the LF patch so git apply behaves the same across runners.
+          sed -i 's/\r$//' "${{ env.base_dir }}/zmk-split-esb/src/split/esb/app_esb.c"
           git -C "${{ env.base_dir }}/zmk-split-esb" apply --check "${GITHUB_WORKSPACE}/patches/zmk-split-esb-hardening.patch"
           git -C "${{ env.base_dir }}/zmk-split-esb" apply "${GITHUB_WORKSPACE}/patches/zmk-split-esb-hardening.patch"
 
