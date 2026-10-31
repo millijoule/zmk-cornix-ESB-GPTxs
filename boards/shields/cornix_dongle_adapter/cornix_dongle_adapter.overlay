@@ -1,2 +1,7 @@
 #include "../../jzf/cornix/cornix_dongle_common.dtsi"
 //vim: set ft=dts:
+
+/* The ESB dongle does not monitor battery state. */
+&vbatt {
+    status = "disabled";
+};
