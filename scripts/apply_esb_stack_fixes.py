@@ -72,15 +72,89 @@ def replace_scoped_central_pipe_count(path: Path) -> None:
     print("Applied: two-peripheral TDMA slot scheduling")
 
 
+
+def guard_battery_reporting(path: Path) -> None:
+    """Compile out the ESB peripheral's optional battery-report worker.
+
+    The split-ESB module otherwise references zmk_battery_state_of_charge()
+    even when ZMK_BATTERY_REPORTING is disabled in the application.
+    """
+    source = path.read_text(encoding="utf-8")
+
+    guarded_block = re.compile(
+        r"(?ms)^#if IS_ENABLED\(CONFIG_ZMK_BATTERY_REPORTING\)\n"
+        r"static void battery_report_work_handler\(struct k_work \*work\);\n"
+        r"K_WORK_DELAYABLE_DEFINE\(battery_report_work, battery_report_work_handler\);\n"
+        r"static void battery_report_work_handler\(struct k_work \*work\) \{\n"
+        r".*?^#endif /\* CONFIG_ZMK_BATTERY_REPORTING \*/\n"
+    )
+    if len(list(guarded_block.finditer(source))) == 0:
+        block = re.compile(
+            r"(?ms)(^static void battery_report_work_handler\(struct k_work \*work\);\n"
+            r"K_WORK_DELAYABLE_DEFINE\(battery_report_work, battery_report_work_handler\);\n"
+            r"static void battery_report_work_handler\(struct k_work \*work\) \{\n"
+            r".*?^\}\n)"
+        )
+        matches = list(block.finditer(source))
+        if len(matches) != 1:
+            raise SystemExit(
+                f"{path}: expected exactly one battery report worker block; found {len(matches)}."
+            )
+        match = matches[0]
+        replacement = (
+            "#if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING)\n"
+            + match.group(1)
+            + "#endif /* CONFIG_ZMK_BATTERY_REPORTING */\n"
+        )
+        source = source[:match.start()] + replacement + source[match.end():]
+        print("Applied: optional ESB battery-report worker guard")
+    elif len(list(guarded_block.finditer(source))) > 1:
+        raise SystemExit(f"{path}: found multiple guarded battery report worker blocks.")
+    else:
+        print("Already applied: optional ESB battery-report worker guard")
+
+    guarded_schedule = re.compile(
+        r"(?ms)^#if IS_ENABLED\(CONFIG_ZMK_BATTERY_REPORTING\)\n"
+        r"(?P<indent>[ \t]*)k_work_reschedule\(&battery_report_work,\s*K_NO_WAIT\);\n"
+        r"#endif /\* CONFIG_ZMK_BATTERY_REPORTING \*/\n"
+    )
+    if len(list(guarded_schedule.finditer(source))) == 0:
+        schedule = re.compile(
+            r"(?m)^(?P<indent>[ \t]*)k_work_reschedule\(&battery_report_work,\s*K_NO_WAIT\);[ \t]*$"
+        )
+        matches = list(schedule.finditer(source))
+        if len(matches) != 1:
+            raise SystemExit(
+                f"{path}: expected exactly one battery scheduling call; found {len(matches)}."
+            )
+        match = matches[0]
+        replacement = (
+            "#if IS_ENABLED(CONFIG_ZMK_BATTERY_REPORTING)\n"
+            f"{match.group('indent')}k_work_reschedule(&battery_report_work, K_NO_WAIT);\n"
+            "#endif /* CONFIG_ZMK_BATTERY_REPORTING */"
+        )
+        source = source[:match.start()] + replacement + source[match.end():]
+        print("Applied: optional ESB battery-report scheduling guard")
+    elif len(list(guarded_schedule.finditer(source))) > 1:
+        raise SystemExit(f"{path}: found multiple guarded battery scheduling calls.")
+    else:
+        print("Already applied: optional ESB battery-report scheduling guard")
+
+    with path.open("w", encoding="utf-8", newline="\n") as handle:
+        handle.write(source)
+
+
 def main() -> None:
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         raise SystemExit(
             "Usage: apply_esb_stack_fixes.py <sdk-nrf/subsys/esb/esb.c> "
-            "<zmk-split-esb/src/split/esb/app_esb.c>"
+            "<zmk-split-esb/src/split/esb/app_esb.c> "
+            "<zmk-split-esb/src/split/esb/peripheral.c>"
         )
 
     sdk_path = Path(sys.argv[1])
     module_path = Path(sys.argv[2])
+    peripheral_path = Path(sys.argv[3])
 
     replace_scoped_central_pipe_count(sdk_path)
     replace_regex_once(
@@ -119,6 +193,8 @@ def main() -> None:
         "defined return from direct-RX handler",
         already_pattern=r"^[ \t]*esb_ctx->rx_handler\(source,\s*payload\.data,\s*payload\.length\);[ \t]*\n[ \t]*return\s+0;[ \t]*\n[ \t]*\}",
     )
+
+    guard_battery_reporting(peripheral_path)
 
 
 if __name__ == "__main__":
