@@ -1,0 +1,224 @@
+name: Build ESB-only firmware
+
+on:
+  workflow_call:
+
+jobs:
+  matrix:
+    runs-on: ubuntu-22.04
+    name: Fetch ESB Build Targets
+    outputs:
+      build_matrix: ${{ env.build_matrix }}
+      has_valid_build_matrix: ${{ steps.fetch.outputs.has_valid_build_matrix }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Fetch Build Matrix
+        id: fetch
+        run: |
+          matrix_content=$(yq -oj -I0 'build-esb.yaml')
+
+          if [ -z "$matrix_content" ] || [ "$matrix_content" = "null" ]; then
+            echo "::notice file=build-esb.yaml,title=Empty ESB build matrix::No ESB targets configured."
+            echo "has_valid_build_matrix=false" >> $GITHUB_OUTPUT
+          else
+            echo "build_matrix=$matrix_content" >> $GITHUB_ENV
+            echo "has_valid_build_matrix=true" >> $GITHUB_OUTPUT
+            echo "$matrix_content"
+          fi
+
+  build:
+    runs-on: ubuntu-latest
+    if: needs.matrix.outputs.has_valid_build_matrix == 'true'
+    container:
+      image: zmkfirmware/zmk-build-arm:stable
+    needs: matrix
+    name: Build (${{ matrix.artifact-name }})
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.build_matrix) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Create build directory
+        run: |
+          echo "build_dir=$(mktemp -d)" >> $GITHUB_ENV
+
+      - name: Prepare variables
+        shell: bash -x {0}
+        env:
+          board: ${{ matrix.board }}
+          shield: ${{ matrix.shield }}
+          artifact_name: ${{ matrix.artifact-name }}
+          snippet: ${{ matrix.snippet }}
+        run: |
+          if [ -e zephyr/module.yml ]; then
+            new_tmp_dir="${TMPDIR:-/tmp}/zmk-config"
+            mkdir -p "${new_tmp_dir}"
+            echo "base_dir=${new_tmp_dir}" >> $GITHUB_ENV
+          else
+            echo "base_dir=${GITHUB_WORKSPACE}" >> $GITHUB_ENV
+          fi
+
+          echo "display_name=${shield:+$shield - }${board}" >> $GITHUB_ENV
+          echo "artifact_name=${artifact_name:-${shield:+$shield-}${board//\\//_}-zmk}" >> $GITHUB_ENV
+      - name: Copy config files to isolated temporary directory
+        run: |
+          if [ "${{ env.base_dir }}" != "${GITHUB_WORKSPACE}" ]; then
+            mkdir -p "${{ env.base_dir }}/config"
+            cp -R config/* "${{ env.base_dir }}/config/"
+          fi
+
+      - name: Cache west modules
+        uses: actions/cache@v6
+        continue-on-error: true
+        env:
+          cache_name: cache-zephyr-esb-modules
+        with:
+          path: |
+            ${{ env.base_dir }}/modules/
+            ${{ env.base_dir }}/tools/
+            ${{ env.base_dir }}/zephyr/
+            ${{ env.base_dir }}/bootloader/
+            ${{ env.base_dir }}/zmk/
+            ${{ env.base_dir }}/nrf/
+            ${{ env.base_dir }}/nrfxlib/
+            ${{ env.base_dir }}/zmk-split-esb/
+          key: ${{ runner.os }}-build-${{ env.cache_name }}-${{ hashFiles('**/west.yml', '**/build-esb.yaml', 'scripts/*.py') }}
+          # Do not restore a prefix-matched cache: it may contain locally patched sources from older jobs.
+
+      - name: West Init
+        working-directory: ${{ env.base_dir }}
+        run: west init -l "${{ env.base_dir }}/config"
+
+      - name: West Update
+        working-directory: ${{ env.base_dir }}
+        run: west update --fetch-opt=--filter=tree:0
+
+      - name: Apply pinned ESB stack fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 "${GITHUB_WORKSPACE}/scripts/apply_esb_stack_fixes.py" \
+            "${{ env.base_dir }}/nrf/subsys/esb/esb.c" \
+            "${{ env.base_dir }}/zmk-split-esb/src/split/esb/app_esb.c" \
+            "${{ env.base_dir }}/zmk-split-esb/src/split/esb/peripheral.c"
+
+      - name: Check ZMK revision
+        working-directory: ${{ env.base_dir }}
+        run: |
+          zmk_revision=$(west list -f "{revision}" zmk)
+          echo "zmk_revision=$zmk_revision" >> $GITHUB_ENV
+          echo "ZMK revision: $zmk_revision"
+
+      - name: West Zephyr export
+        working-directory: ${{ env.base_dir }}
+        run: west zephyr-export
+
+      - name: West Build (${{ env.display_name }})
+        working-directory: ${{ env.base_dir }}
+        shell: bash -x {0}
+        env:
+          BOARD: ${{ matrix.board }}
+          SHIELD: ${{ matrix.shield }}
+          SNIPPET: ${{ matrix.snippet }}
+          MATRIX_CMAKE_ARGS: ${{ matrix.cmake-args }}
+          BUILD_DIR: ${{ env.build_dir }}
+          ZMK_CONFIG_PATH: ${{ env.base_dir }}/config
+        run: |
+          set -euo pipefail
+          west_args=()
+          if [[ -n "${SNIPPET:-}" ]]; then
+            west_args+=(-S "${SNIPPET}")
+          fi
+
+          cmake_args=("-DZMK_CONFIG=${ZMK_CONFIG_PATH}" "-DZMK_EXTRA_MODULES=${GITHUB_WORKSPACE}")
+          if [[ -n "${SHIELD:-}" ]]; then
+            cmake_args+=("-DSHIELD=${SHIELD}")
+          fi
+          if [[ -n "${MATRIX_CMAKE_ARGS:-}" ]]; then
+            read -r -a extra_cmake_args <<< "${MATRIX_CMAKE_ARGS}"
+            cmake_args+=("${extra_cmake_args[@]}")
+          fi
+
+          west build -s zmk/app -d "${BUILD_DIR}" -b "${BOARD}" "${west_args[@]}" -- "${cmake_args[@]}"
+
+      - name: Check if building a board without explicit ZMK compat
+        if: always()
+        working-directory: ${{ env.base_dir }}/config
+        run: |
+          if ! (grep "CONFIG_ZMK_BOARD_COMPAT=y" "${{ env.build_dir }}/zephyr/.config" > /dev/null)
+          then
+            original_board=$(echo "${{ matrix.board }}" | sed -e 's$/.*$$')
+            west_board=$(west boards --board-root ${{ env.base_dir }}/zmk/app/module --board-root ${{ env.base_dir }}/zmk/app --board "$original_board")
+            if [ -z "$west_board" ]; then
+              echo "Board not found with west boards; skipping compat check."
+              exit 0
+            fi
+
+            west boards --board-root ${{ env.base_dir }}/zmk/app/module --board-root ${{ env.base_dir }}/zmk/app --board "$original_board" --format "{qualifiers}" | grep "zmk" > /dev/null
+            if [ $? -ne 0 ]
+            then
+              echo "::warning file=build/zephyr/.config,title=Missing ZMK Compat::The selected board does not report explicit ZMK compat."
+            else
+              echo "::error file=build/zephyr/.config,title=Missing ZMK Compat::The selected board is not set up for ZMK and a ZMK variant is available."
+              exit 1
+            fi
+          fi
+
+      - name: Kconfig output
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f "${{ env.build_dir }}/zephyr/.config" ]
+          then
+            grep -v -e "^#" -e "^$" "${{ env.build_dir }}/zephyr/.config" | sort
+          else
+            echo "No Kconfig output"
+          fi
+
+      - name: Devicetree output
+        if: ${{ !cancelled() }}
+        run: |
+          if [ -f "${{ env.build_dir }}/zephyr/zephyr.dts" ]
+          then
+            cat "${{ env.build_dir }}/zephyr/zephyr.dts"
+          elif [ -f "${{ env.build_dir }}/zephyr/zephyr.dts.pre" ]
+          then
+            cat -s "${{ env.build_dir }}/zephyr/zephyr.dts.pre"
+          else
+            echo "No Devicetree output"
+          fi
+
+      - name: Rename artifacts
+        shell: sh -x {0}
+        run: |
+          mkdir "${{ env.build_dir }}/artifacts"
+          if [ -f "${{ env.build_dir }}/zephyr/zmk.uf2" ]
+          then
+            cp "${{ env.build_dir }}/zephyr/zmk.uf2" "${{ env.build_dir }}/artifacts/${{ env.artifact_name }}.uf2"
+          elif [ -f "${{ env.build_dir }}/zephyr/zmk.bin" ]
+          then
+            cp "${{ env.build_dir }}/zephyr/zmk.bin" "${{ env.build_dir }}/artifacts/${{ env.artifact_name }}.bin"
+          fi
+
+      - name: Archive (${{ env.display_name }})
+        uses: actions/upload-artifact@v7
+        with:
+          name: artifact-${{ env.artifact_name }}
+          path: ${{ env.build_dir }}/artifacts
+
+  merge:
+    runs-on: ubuntu-latest
+    if: needs.matrix.outputs.has_valid_build_matrix == 'true'
+    needs: build
+    name: Merge ESB Output Artifacts
+    steps:
+      - name: Merge Artifacts
+        uses: actions/upload-artifact/merge@v7
+        with:
+          name: cornix-esb-firmware
+          pattern: artifact-*
+          delete-merged: true
+

@@ -21,15 +21,6 @@ endif # USB
 config ZMK_SPLIT_ROLE_CENTRAL
     default y
 
-config ZMK_SPLIT_BLE_ROLE_CENTRAL
-	default y
-
-config ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_FETCHING
-	default y
-
-config ZMK_SPLIT_BLE_CENTRAL_BATTERY_LEVEL_PROXY
-	default y
-
 endif # BOARD_CORNIX_LEFT
 
 ## Peripheral device (right side)
@@ -37,9 +28,6 @@ if BOARD_CORNIX_RIGHT || BOARD_CORNIX_PH_LEFT
 
 config ZMK_SPLIT_ROLE_CENTRAL
     default n
-
-config ZMK_SPLIT_BLE_ROLE_CENTRAL
-	default n
 
 # Add keyboard debouncing
 config ZMK_KSCAN_DEBOUNCE_PRESS_MS
@@ -60,9 +48,6 @@ config BOARD_CORNIX_CHARGER
     default y
 
 config ZMK_SPLIT
-	default y
-
-config ZMK_BLE
 	default y
 
 ## disable rgb by default

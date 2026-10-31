@@ -1,13 +1,27 @@
-name: Build ZMK firmware
+name: Build ESB-only firmware
 on:
   workflow_dispatch:
   push:
     paths:
-      - "boards/*"
-      - "config/*"
+      - "boards/**"
+      - "config/**"
+      - "build-esb.yaml"
+      - "scripts/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/build-esb.yml"
     tags-ignore:
       - "*"
+  pull_request:
+    paths:
+      - "boards/**"
+      - "config/**"
+      - "build-esb.yaml"
+      - "patches/**"
+      - "scripts/**"
+      - ".github/workflows/build.yml"
+      - ".github/workflows/build-esb.yml"
 
 jobs:
-  build:
-    uses: zmkfirmware/zmk/.github/workflows/build-user-config.yml@main
+  build-esb:
+    name: Build ESB-only firmware
+    uses: ./.github/workflows/build-esb.yml

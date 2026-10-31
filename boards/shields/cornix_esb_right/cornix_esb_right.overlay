@@ -1,0 +1,5 @@
+#include "../../jzf/cornix/cornix_esb.dtsi"
+
+&vbatt {
+    status = "disabled";
+};
